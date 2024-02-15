@@ -1,0 +1,144 @@
+using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+
+public class PlayerBehaviour : MonoBehaviour {
+
+
+	public Animator playerAnimator;
+
+	//Movement Variables
+	public float speed;
+	public float maxSpeed;
+	public float speedJump;
+	public float maxSpeedjump;
+	private Rigidbody2D rigidbodyPlayer;
+   
+	private bool isGrounded;
+	public Transform footCollision;
+	private bool lookToRight = true;
+	private Vector3 positionRight;
+	private Vector3 positionLeft;
+
+	//Attack
+	public List<BaseAttack> attacks;
+	public int currentAttack;
+	private float currentCooldown;
+
+	//Hit
+	private float currentTimeToStun;
+	private bool inStun;
+	public float timeToRecoverStun;
+
+    // Use this for initialization
+    void Start () {
+
+		rigidbodyPlayer = GetComponent<Rigidbody2D> ();
+		positionRight = playerAnimator.transform.localScale;
+		positionLeft = positionRight;
+		positionLeft.x *= -1;
+      
+	}
+
+	// Update is called once per frame
+	void Update () {
+
+
+		//Movimentation ////////////////////////////////////////////////////////////////////////
+		Vector2 inputDirection = new Vector2 (Input.GetAxis ("Horizontal")*speed, 0);
+
+		if (inputDirection.x > 0) {
+			lookToRight = true;
+		}
+		if (inputDirection.x < 0) {
+			lookToRight = false;
+		}
+
+		if (lookToRight) {
+			playerAnimator.transform.localScale = positionRight;
+		} else {
+			playerAnimator.transform.localScale = positionLeft;
+		}
+			
+
+        rigidbodyPlayer.velocity = new Vector2(inputDirection.x, rigidbodyPlayer.velocity.y);
+
+		if (rigidbodyPlayer.velocity.x > maxSpeed) {
+			rigidbodyPlayer.velocity = new Vector2 (maxSpeed, rigidbodyPlayer.velocity.y);
+		}
+
+		if (rigidbodyPlayer.velocity.x < -maxSpeed) {
+			rigidbodyPlayer.velocity = new Vector2 (-maxSpeed, rigidbodyPlayer.velocity.y);
+		}
+
+		playerAnimator.SetFloat("velocity",Mathf.Abs(inputDirection.x));
+
+		if (Input.GetKeyDown (KeyCode.UpArrow)) {
+
+			Jump ();
+		}
+
+		if (Physics2D.Linecast (transform.position, footCollision.position, 1 << LayerMask.NameToLayer("Ground"))) {
+		   isGrounded = true;
+		
+		}
+		else { isGrounded = false; }
+
+		playerAnimator.SetBool ("isGrounded", isGrounded);
+		//Movimentation ///////////////////////////////////////////////////////////////////////////////////////////////
+
+		//Attack //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		if (Input.GetKey (KeyCode.Space) && currentCooldown > attacks [currentAttack].cooldown && !inStun) {
+
+			if (attacks [currentAttack].canUseThisAttack) {
+
+				GameObject tempAttack = Instantiate (attacks [currentAttack].gameObject, transform.position, transform.rotation) as GameObject;
+				tempAttack.GetComponent<BaseAttack> ().SetDirection (lookToRight);
+				currentCooldown = 0;
+
+				playerAnimator.SetTrigger ("attack");
+
+			
+			}
+		
+		}
+
+/////////////////////////////////////////////////////////////////////////////////// ( ignorar \/ ) ///////////////////////////////////////////////////////////////////////////////////
+
+		currentCooldown += Time.deltaTime;
+		//Attack //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		//Hit /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		if (inStun) {
+			currentTimeToStun += Time.deltaTime;
+			if (currentTimeToStun > timeToRecoverStun) {
+				inStun = false;
+				currentTimeToStun = 0;
+
+			}
+		
+		}
+
+
+		//Hit /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	}
+
+	public void Jump(){
+
+		if (isGrounded) {
+			rigidbodyPlayer.AddForce (new Vector2 (0, speedJump));
+			playerAnimator.SetTrigger ("jump");
+
+		}
+		
+		}
+
+	public void ApplyStun(){
+		inStun = true;
+
+	}
+
+}
